@@ -13,16 +13,27 @@ from services import carga_excel, generador_pdf
 rutas = Blueprint("rutas", __name__)
 
 
-def _resultados():
+def _datos():
+    """Estudiantes y evaluaciones: de los Excel si no hay base, o de la base de datos."""
+    if datos.sin_base_de_datos():
+        return carga_excel.datos_desde_excel()
     carga_excel.asegurar_datos()
-    return certificados.calcular_resultados(datos.leer_estudiantes(), datos.leer_evaluaciones())
+    return datos.leer_estudiantes(), datos.leer_evaluaciones()
+
+
+def _resultados():
+    estudiantes, evaluaciones = _datos()
+    return certificados.calcular_resultados(estudiantes, evaluaciones)
 
 
 @rutas.route("/")
 def tablero():
     try:
-        resultados, contadores, inconsistencias = _resultados()
-        n_est, n_eva = datos.contar_filas()
+        estudiantes, evaluaciones = _datos()
+        resultados, contadores, inconsistencias = certificados.calcular_resultados(
+            estudiantes, evaluaciones
+        )
+        n_est, n_eva = len(estudiantes), len(evaluaciones)
     except Exception as error:  # se muestra el error en pantalla, en lenguaje sencillo
         return render_template("error.html", error=error, motor=datos.nombre_motor()), 500
     return render_template(
@@ -43,6 +54,13 @@ def cargar():
         maestro = request.files.get("maestro")
         evaluaciones = request.files.get("evaluaciones")
         try:
+            if datos.sin_base_de_datos():
+                flash(
+                    "En Vercel la app lee directamente los Excel de la carpeta insumos. "
+                    "Para cambiar los datos, reemplácelos en el repositorio de GitHub.",
+                    "error",
+                )
+                return redirect(url_for("rutas.tablero"))
             if maestro and maestro.filename and evaluaciones and evaluaciones.filename:
                 n_est, n_eva = carga_excel.cargar_a_la_base(io.BytesIO(maestro.read()),
                                                             io.BytesIO(evaluaciones.read()))

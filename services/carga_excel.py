@@ -49,6 +49,44 @@ def leer_excel(origen_maestro=None, origen_evaluaciones=None):
     return maestro, evaluaciones
 
 
+_cache = {"clave": None, "datos": None}
+
+
+def datos_desde_excel():
+    """Lee los Excel y devuelve (estudiantes, evaluaciones) sin pasar por ninguna base.
+    Se guarda en memoria para no leer los archivos en cada visita."""
+    ruta_maestro = _buscar("Maestro_Estudiantes.xlsx")
+    ruta_evaluaciones = _buscar("Registro_Evaluaciones.xlsx")
+    clave = (ruta_maestro.stat().st_mtime, ruta_evaluaciones.stat().st_mtime)
+    if _cache["clave"] == clave and _cache["datos"] is not None:
+        return _cache["datos"]
+
+    maestro, evaluaciones = leer_excel(ruta_maestro, ruta_evaluaciones)
+    estudiantes = [
+        {
+            "identificacion": r.Identificacion,
+            "nombre_completo": str(r.Nombre_Completo),
+            "correo": str(r.Correo),
+            "programa": str(r.Programa),
+            "cohorte": str(r.Cohorte),
+        }
+        for r in maestro.itertuples(index=False)
+    ]
+    filas = [
+        {
+            "identificacion": r.Identificacion,
+            "programa": str(r.Programa),
+            "modulo": str(r.Modulo),
+            "nota": float(r.Nota),
+            "asistencia_pct": float(r.Asistencia_Pct),
+            "fecha_cierre": str(r.Fecha_Cierre)[:10],
+        }
+        for r in evaluaciones.itertuples(index=False)
+    ]
+    _cache.update(clave=clave, datos=(estudiantes, filas))
+    return estudiantes, filas
+
+
 def cargar_a_la_base(origen_maestro=None, origen_evaluaciones=None):
     maestro, evaluaciones = leer_excel(origen_maestro, origen_evaluaciones)
     filas_est = [

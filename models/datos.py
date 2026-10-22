@@ -56,8 +56,17 @@ def usa_supabase():
     return _url().startswith(("postgres://", "postgresql://"))
 
 
+def sin_base_de_datos():
+    """True cuando no hay base de datos: en Vercel sin DATABASE_URL se leen los Excel."""
+    return bool(os.getenv("VERCEL")) and not usa_supabase()
+
+
 def nombre_motor():
-    return "Supabase (PostgreSQL)" if usa_supabase() else "SQLite local (sin Supabase todavía)"
+    if usa_supabase():
+        return "Supabase (PostgreSQL)"
+    if sin_base_de_datos():
+        return "Sin base de datos (leyendo los Excel)"
+    return "SQLite local (sin Supabase todavía)"
 
 
 def _ruta_sqlite():
