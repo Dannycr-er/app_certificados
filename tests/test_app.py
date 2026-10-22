@@ -4,6 +4,7 @@ PRUEBAS AUTOMÁTICAS · tests/test_app.py
 Estas pruebas simulan un navegador con app.test_client(): hacen las mismas
 peticiones que una persona, pero sin abrir la app ni usar el ratón.
 """
+import html as html_lib
 import io
 import os
 import re
@@ -23,8 +24,9 @@ os.environ["ADMIN_CLAVE"] = "clave-admin-de-prueba"
 os.environ["USUARIO_CORREO"] = "usuario@prueba.cr"
 os.environ["USUARIO_CLAVE"] = "clave-usuario-de-prueba"
 os.environ["SECRET_KEY"] = "llave-secreta-solo-para-pruebas"
-# Base de datos vacía: así ninguna prueba toca Supabase ni un archivo local.
+# Base de datos vacía y modo Vercel: las pruebas leen los Excel de insumos.
 os.environ["DATABASE_URL"] = ""
+os.environ["VERCEL"] = "1"
 
 # Permite encontrar app.py aunque pytest se ejecute desde otra carpeta.
 CARPETA_RAIZ = Path(__file__).resolve().parent.parent
@@ -137,3 +139,25 @@ def test_excel_modificado_cambia_contadores(cliente):
     assert _numero_de_tarjeta(html, "Certificados de Aprobación") == 18
     assert _numero_de_tarjeta(html, "Certificados de Participación") == 4
     assert _numero_de_tarjeta(html, "Sin certificado") == 1
+
+
+def test_certificado_se_descarga(cliente):
+    """Simula abrir el primer enlace "Ver PDF" del tablero y comprueba que
+    el navegador recibe un PDF de verdad, no una página de error."""
+    _entrar(cliente, os.environ["ADMIN_CORREO"], os.environ["ADMIN_CLAVE"])
+
+    tablero = cliente.get("/")
+    html = tablero.get_data(as_text=True)
+
+    # Los enlaces ahora usan /certificado?identificacion=...&programa=...
+    enlaces = [
+        html_lib.unescape(enlace)
+        for enlace in re.findall(r'href="(/certificado[^"]*)"', html)
+    ]
+    assert len(enlaces) == 22
+
+    respuesta = cliente.get(enlaces[0])
+
+    assert respuesta.status_code == 200
+    assert respuesta.headers["Content-Type"].startswith("application/pdf")
+    assert respuesta.data.startswith(b"%PDF")

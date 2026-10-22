@@ -7,6 +7,7 @@ import io
 import os
 import secrets
 from functools import wraps
+from urllib.parse import unquote
 
 from flask import (Blueprint, abort, flash, redirect, render_template, request,
                    send_file, session, url_for)
@@ -262,17 +263,45 @@ def descargar_resultados():
     )
 
 
-@rutas.route("/certificado/<identificacion>/<path:programa>")
-@requiere_login
-def certificado(identificacion, programa):
+def _normalizar(texto):
+    """Quita espacios sobrantes y unifica la forma del texto para comparar.
+    También sirve si un dato viene como número en vez de texto."""
+    return " ".join(str(texto or "").split()).strip()
+
+
+def _enviar_certificado(identificacion, programa):
+    """Busca el resultado del estudiante y devuelve el PDF en memoria."""
+    identificacion = _normalizar(identificacion)
+    programa = _normalizar(unquote(programa or ""))
+
     resultados, _c, _i = _resultados()
     for r in resultados:
-        if r["identificacion"] == identificacion and r["programa"] == programa:
+        if (_normalizar(r["identificacion"]) == identificacion and
+                _normalizar(r["programa"]) == programa):
             if not certificados.lleva_certificado(r):
                 abort(404)
             return send_file(io.BytesIO(generador_pdf.crear_pdf(r)), mimetype="application/pdf",
                              download_name=generador_pdf.nombre_archivo(r))
     abort(404)
+
+
+@rutas.route("/certificado")
+@requiere_login
+def certificado():
+    """Ruta principal del certificado, con los datos en la cadena de consulta.
+    Es la forma más confiable en Vercel: /certificado?identificacion=...&programa=...
+    """
+    return _enviar_certificado(
+        request.args.get("identificacion", ""),
+        request.args.get("programa", ""),
+    )
+
+
+@rutas.route("/certificado/<identificacion>/<path:programa>")
+@requiere_login
+def certificado_por_ruta(identificacion, programa):
+    """Ruta antigua, se mantiene para que los enlaces viejos sigan funcionando."""
+    return _enviar_certificado(identificacion, programa)
 
 
 @rutas.route("/descargar-todos")
