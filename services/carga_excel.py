@@ -52,16 +52,9 @@ def leer_excel(origen_maestro=None, origen_evaluaciones=None):
 _cache = {"clave": None, "datos": None}
 
 
-def datos_desde_excel():
-    """Lee los Excel y devuelve (estudiantes, evaluaciones) sin pasar por ninguna base.
-    Se guarda en memoria para no leer los archivos en cada visita."""
-    ruta_maestro = _buscar("Maestro_Estudiantes.xlsx")
-    ruta_evaluaciones = _buscar("Registro_Evaluaciones.xlsx")
-    clave = (ruta_maestro.stat().st_mtime, ruta_evaluaciones.stat().st_mtime)
-    if _cache["clave"] == clave and _cache["datos"] is not None:
-        return _cache["datos"]
-
-    maestro, evaluaciones = leer_excel(ruta_maestro, ruta_evaluaciones)
+def _convertir(maestro, evaluaciones):
+    """Convierte las dos tablas de pandas en las listas de diccionarios que usan
+    el resto de la app. Es el mismo formato venga de donde venga el Excel."""
     estudiantes = [
         {
             "identificacion": r.Identificacion,
@@ -83,8 +76,33 @@ def datos_desde_excel():
         }
         for r in evaluaciones.itertuples(index=False)
     ]
-    _cache.update(clave=clave, datos=(estudiantes, filas))
     return estudiantes, filas
+
+
+def datos_desde_excel(origen_maestro=None, origen_evaluaciones=None):
+    """Lee los Excel y devuelve (estudiantes, evaluaciones) sin pasar por ninguna base.
+
+    - Sin archivos: lee los de la carpeta insumos y usa una caché para no
+      leerlos en cada visita.
+    - Con archivos: lee esos archivos (pueden ser BytesIO con lo que subió el
+      administrador) y NO usa la caché, porque cada subida es distinta.
+    """
+    if origen_maestro is None and origen_evaluaciones is None:
+        ruta_maestro = _buscar("Maestro_Estudiantes.xlsx")
+        ruta_evaluaciones = _buscar("Registro_Evaluaciones.xlsx")
+        clave = (ruta_maestro.stat().st_mtime, ruta_evaluaciones.stat().st_mtime)
+        if _cache["clave"] == clave and _cache["datos"] is not None:
+            return _cache["datos"]
+
+        maestro, evaluaciones = leer_excel(ruta_maestro, ruta_evaluaciones)
+        resultado = _convertir(maestro, evaluaciones)
+        _cache.update(clave=clave, datos=resultado)
+        return resultado
+
+    # Si se pasan archivos, leer_excel los usa directamente; si falta uno,
+    # completa con el de insumos (aunque la ruta /cargar exige los dos).
+    maestro, evaluaciones = leer_excel(origen_maestro, origen_evaluaciones)
+    return _convertir(maestro, evaluaciones)
 
 
 def cargar_a_la_base(origen_maestro=None, origen_evaluaciones=None):

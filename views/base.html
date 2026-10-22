@@ -13,6 +13,13 @@
   header h1 span { color:var(--dorado); }
   nav a { color:#fff; text-decoration:none; margin-left:18px; font-size:14px; opacity:.9; }
   nav a:hover { opacity:1; text-decoration:underline; }
+  .usuario { color:#fff; font-size:13px; opacity:.9; margin-left:18px; white-space:nowrap; }
+  /* Insignia del rol: dorada para administrador, azul clara para usuario */
+  .rol { display:inline-block; margin-left:6px; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; vertical-align:middle; }
+  .rol.admin { background:var(--dorado); color:#fff; }
+  .rol.usuario { background:#E8EEF8; color:var(--azul); }
+  .salir { display:inline-block; background:var(--dorado); color:#fff; padding:7px 14px; border-radius:8px; font-size:13px; font-weight:600; }
+  .salir:hover { text-decoration:none; opacity:.9; }
   main { max-width:1150px; margin:0 auto; padding:26px 20px 60px; }
   .motor { display:inline-block; font-size:13px; padding:5px 12px; border-radius:999px; background:#E8EEF8; color:var(--azul); font-weight:600; }
   .motor.supa { background:#E3F4EA; color:var(--verde); }
@@ -43,12 +50,36 @@
   .fila { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   footer { text-align:center; color:var(--gris); font-size:12px; padding:20px; }
   label { display:block; font-weight:600; margin:14px 0 6px; }
+  /* Pantalla de entrada: caja centrada con el mismo estilo de la app */
+  .login-caja { max-width:430px; margin:44px auto; background:#fff; border-radius:12px; padding:30px 32px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-top:5px solid var(--azul); }
+  .login-caja h2 { margin:0 0 6px; font-size:22px; color:var(--azul); }
+  .login-caja .texto { color:var(--gris); font-size:14px; margin:0 0 18px; }
+  .login-caja input { width:100%; padding:11px 12px; border:1px solid #D5D8DC; border-radius:8px; font-size:15px; font-family:inherit; }
+  .login-caja input:focus { outline:2px solid var(--dorado); outline-offset:1px; border-color:var(--dorado); }
+  .login-caja .btn { width:100%; margin-top:22px; padding:12px 18px; font-size:15px; }
+  .error-login { background:#FDECEA; color:var(--rojo); padding:11px 14px; border-radius:8px; font-size:14px; margin:0 0 4px; border-left:4px solid var(--rojo); }
+  .aviso-demo { background:#FDF3E1; color:var(--ambar); padding:12px 14px; border-radius:8px; font-size:13px; margin:0 0 18px; line-height:1.5; }
+  .aviso-demo code { background:#fff; padding:1px 5px; border-radius:4px; color:var(--azul); }
 </style>
 </head>
 <body>
 <header>
   <h1>Academia Horizonte · <span>Certificados</span></h1>
-  <nav><a href="{{ url_for('rutas.tablero') }}">Tablero</a><a href="{{ url_for('rutas.cargar') }}">Cargar datos</a><a href="{{ url_for('rutas.descargar_todos') }}">Descargar todos</a></nav>
+  {% if session.get('correo') %}
+  <nav>
+    <a href="{{ url_for('rutas.tablero') }}">Tablero</a>
+    {# Los enlaces de administración solo se muestran al admin; la ruta igual lo exige. #}
+    {% if session.get('rol') == 'admin' %}
+    <a href="{{ url_for('rutas.tablero') }}#panel-admin">Cargar datos</a>
+    {# "Descargar todos" usa los datos de fábrica: se oculta al ver datos subidos. #}
+    {% if not (datos_subidos|default(false)) %}
+    <a href="{{ url_for('rutas.descargar_todos') }}">Descargar todos</a>
+    {% endif %}
+    {% endif %}
+    <span class="usuario">{{ session.correo }}<span class="rol {{ session.rol }}">{{ 'Administrador' if session.rol == 'admin' else 'Usuario' }}</span></span>
+    <a class="salir" href="{{ url_for('rutas.salir') }}">Salir</a>
+  </nav>
+  {% endif %}
 </header>
 <main>
   {% with mensajes = get_flashed_messages(with_categories=true) %}

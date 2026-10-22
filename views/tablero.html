@@ -1,11 +1,54 @@
 {% extends "base.html" %}
 {% block contenido %}
+{# Aviso cuando la tabla viene de los Excel que subió el administrador. #}
+{% if datos_subidos %}
+<div class="aviso ok">
+  <b>Está viendo los resultados de los archivos que subió.</b>
+  Estos resultados viven solo en esta pantalla: no se guardaron en ninguna base de datos.
+  Si recarga o vuelve a entrar, verá otra vez los datos de fábrica.
+</div>
+{% endif %}
+
+{# Panel de administrador: solo aparece para el rol admin (la ruta /cargar también lo exige). #}
+{% if session.get('rol') == 'admin' %}
+<div class="panel" id="panel-admin">
+  <h2>Panel de administrador</h2>
+  <p><b>Origen de los datos en pantalla:</b> {{ origen }}</p>
+  <p style="color:#6B7280;font-size:13px;margin-top:0">
+    Suba los dos Excel para recalcular sin guardar nada. Máximo 4 MB en total, solo archivos .xlsx.
+  </p>
+
+  <form method="post" action="{{ url_for('rutas.cargar') }}" enctype="multipart/form-data">
+    <label for="maestro">Maestro de estudiantes (.xlsx)</label>
+    <input id="maestro" type="file" name="maestro" accept=".xlsx">
+
+    <label for="evaluaciones">Registro de evaluaciones (.xlsx)</label>
+    <input id="evaluaciones" type="file" name="evaluaciones" accept=".xlsx">
+
+    <p style="margin-top:18px">
+      {# Los dos botones van a la misma ruta; se distinguen por el campo "accion". #}
+      <button class="btn" type="submit" name="accion" value="ver">Procesar y ver en pantalla</button>
+      <button class="btn sec" type="submit" name="accion" value="descargar">Procesar y descargar Excel</button>
+    </p>
+  </form>
+
+  <p style="margin:16px 0 0">
+    <a class="link" href="{{ url_for('rutas.descargar_resultados') }}">
+      Descargar los resultados de los datos de fábrica (.xlsx)
+    </a>
+  </p>
+</div>
+{% endif %}
+
 <div class="fila">
   <div>
     <span class="motor {% if supabase %}supa{% endif %}">Base de datos: {{ motor }}</span>
     <span style="color:#6B7280;font-size:13px;margin-left:8px;">{{ n_est }} estudiantes · {{ n_eva }} evaluaciones</span>
   </div>
+  {# La descarga masiva de PDF es solo para administradores y para los datos de fábrica. #}
+  {% if session.get('rol') == 'admin' and not datos_subidos %}
   <a class="btn" href="{{ url_for('rutas.descargar_todos') }}">Descargar todos los certificados</a>
+  {% endif %}
 </div>
 
 <div class="tarjetas">
@@ -14,6 +57,8 @@
   <div class="tarjeta sin"><div class="num">{{ contadores['Sin certificado'] }}</div><div class="lbl">Sin certificado</div></div>
 </div>
 
+{# Las inconsistencias son información sensible: solo las ve el administrador. #}
+{% if session.get('rol') == 'admin' %}
 <div class="panel alerta">
   <h2>Inconsistencias para revisar ({{ inconsistencias|length }})</h2>
   {% if inconsistencias %}
@@ -25,6 +70,7 @@
   </table>
   {% else %}<p>No hay inconsistencias.</p>{% endif %}
 </div>
+{% endif %}
 
 <div class="panel">
   <h2>Resultados por estudiante</h2>
@@ -37,7 +83,8 @@
       <td>{{ '%.2f'|format(r.promedio) }}</td>
       <td>{{ '%.2f'|format(r.asistencia) }} %</td>
       <td><span class="etq {{ r.tipo.split(' ')[0] }}">{{ r.tipo }}</span></td>
-      <td>{% if r.tipo != 'Sin certificado' %}<a class="link" href="{{ url_for('rutas.certificado', identificacion=r.identificacion, programa=r.programa) }}" target="_blank">Ver PDF</a>{% endif %}</td>
+      {# Los PDF se generan con los datos de fábrica; con datos subidos se usa el Excel. #}
+      <td>{% if not datos_subidos and r.tipo != 'Sin certificado' %}<a class="link" href="{{ url_for('rutas.certificado', identificacion=r.identificacion, programa=r.programa) }}" target="_blank">Ver PDF</a>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

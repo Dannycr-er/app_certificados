@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar · Certificados Academia Horizonte{% endblock %}
+{% block contenido %}
+<div class="login-caja">
+  <h2>Entrar a la aplicación</h2>
+  <p class="texto">Escriba su correo y su contraseña para ver los certificados.</p>
+
+  {# Aviso cuando faltan variables de entorno: se están usando datos de demostración. #}
+  {% if demo %}
+  <div class="aviso-demo">
+    <b>Modo demostración:</b> faltan variables de entorno, así que se usan estos datos de prueba:<br>
+    {% for correo, clave, rol in demo %}
+    · <code>{{ correo }} / {{ clave }}</code> ({{ 'administrador' if rol == 'admin' else 'usuario' }}){% if not loop.last %}<br>{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# Mensaje rojo cuando el correo o la contraseña no coinciden. #}
+  {% if error %}<div class="error-login">{{ error }}</div>{% endif %}
+
+  <form method="post" action="{{ url_for('rutas.login') }}">
+    <label for="correo">Correo</label>
+    <input id="correo" name="correo" type="email" required autofocus
+           autocomplete="username" value="{{ request.form.get('correo', '') }}">
+
+    <label for="clave">Contraseña</label>
+    <input id="clave" name="clave" type="password" required autocomplete="current-password">
+
+    <button class="btn" type="submit">Entrar</button>
+  </form>
+</div>
+{% endblock %}

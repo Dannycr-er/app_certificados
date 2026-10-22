@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titulo %}Sin permiso · Certificados Academia Horizonte{% endblock %}
+{% block contenido %}
+{# Página que se muestra cuando un usuario con rol "usuario" entra a una ruta de administrador. #}
+<div class="login-caja" style="max-width:560px; border-top-color:var(--rojo);">
+  <h2>Esta sección es solo para administradores</h2>
+  <p class="texto">
+    Su sesión está activa, pero su rol no tiene permiso para entrar aquí.
+    Si cree que es un error, pida a un administrador que revise su rol.
+  </p>
+
+  <p style="margin:0 0 6px"><b>Datos de la sesión actual</b></p>
+  <ul style="margin:0 0 22px; padding-left:20px; font-size:14px; line-height:1.9">
+    <li>Correo: <b>{{ session.get('correo', 'sin sesión') }}</b></li>
+    <li>Rol:
+      <span class="rol {{ session.get('rol', 'usuario') }}">
+        {{ 'Administrador' if session.get('rol') == 'admin' else 'Usuario' }}
+      </span>
+    </li>
+  </ul>
+
+  <p style="margin:0">
+    <a class="btn sec" href="{{ url_for('rutas.tablero') }}">Volver al tablero</a>
+    <a class="btn" href="{{ url_for('rutas.salir') }}" style="margin-left:8px">Salir</a>
+  </p>
+</div>
+{% endblock %}
